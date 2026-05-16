@@ -1,0 +1,93 @@
+# Research Modules Configuration
+# Controls optional enhancement modules for visual token processing
+# 
+# Strategy:
+#   - DAY 1: Enable adaptive_router only (PRIMARY innovation)
+#   - DAY 2: Add instruction_guided_aggregation (SECONDARY)
+#   - DAY 3+: Enable grounding/penalty losses (OPTIONAL)
+
+research:
+  # ========================================================================
+  # PRIMARY: Adaptive Visual Token Router
+  # ========================================================================
+  # Learns to select variable number of important tokens per sample
+  # Reduces from fixed 32 → 8-32 depending on question complexity
+  # Expected gain: 10-20% inference speedup with <1% accuracy drop
+  adaptive_router:
+    enabled: true
+    min_tokens: 8
+    max_tokens: 32
+    temperature: 1.0
+    query_conditioned: true  # Use question embeddings to decide which tokens matter
+  
+  # ========================================================================
+  # SECONDARY: Temporal Frame Fusion (Video-specific)
+  # ========================================================================
+  # Fuses per-frame tokens with temporal positioning and self-attention
+  # Only enable if running on video datasets (TVQA, ActivityNet)
+  temporal_fusion:
+    enabled: false
+    num_heads: 8
+    depth: 2
+    output_tokens: 32
+    max_frames: 16
+  
+  # ========================================================================
+  # SECONDARY: Instruction-Guided Visual Aggregator
+  # ========================================================================
+  # Query-conditioned token selection: OCR tasks attend to text regions,
+  # counting tasks to objects, scene understanding to full scene, etc.
+  instruction_guided_aggregation:
+    enabled: false  # Set to true on Day 2
+    output_tokens: 32
+    num_heads: 8
+  
+  # ========================================================================
+  # OPTIONAL: Memory-Aware Projection (Multi-image/long-video)
+  # ========================================================================
+  # Carries recurrent memory across image/video chunks for context
+  # Useful for understanding relationships across multiple images
+  memory_projection:
+    enabled: false
+    memory_slots: 8
+    num_heads: 8
+  
+  # ========================================================================
+  # OPTIONAL: Dynamic Visual Token Generator (Alternative to Router)
+  # ========================================================================
+  # Learnable sparsity with fixed shape output and mask
+  # Choose between dynamic_token_generator OR adaptive_router (not both)
+  dynamic_token_generator:
+    enabled: false
+    min_tokens: 8
+    max_tokens: 32
+  
+  # ========================================================================
+  # OPTIONAL: Visual-Text Grounding Head (Hallucination Reduction)
+  # ========================================================================
+  # Auxiliary contrastive loss: pull answer embeddings closer to visual tokens
+  # Helps reduce hallucinations where model generates unsupported details
+  grounding:
+    enabled: false  # Set to true on Day 2 if router improves accuracy
+    lambda_grounding: 0.05  # Weight for this loss
+    projection_dim: 512
+    temperature: 0.07
+  
+  # ========================================================================
+  # OPTIONAL: Unsupported Claim Penalty (Requires negative examples)
+  # ========================================================================
+  # Lightweight evidence scoring between visual and answer tokens
+  # Requires pairs of negative examples with unsupported entities
+  # Skip for now - implement post-experiments if needed
+  unsupported_claim_penalty:
+    enabled: false
+    lambda_penalty: 0.05
+
+# ============================================================================
+# EXPERIMENT PRESETS (use these as templates for ablation studies)
+# ============================================================================
+# Copy this file and modify to create experiment variants:
+#   research_modules_baseline.yaml (all disabled)
+#   research_modules_router_only.yaml (adaptive_router enabled)
+#   research_modules_router_guided.yaml (router + instruction_guided)
+#   research_modules_with_grounding.yaml (router + grounding loss)

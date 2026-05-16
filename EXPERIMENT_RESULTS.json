@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-05-15T15:32:33.851484",
+  "total_time": "0:01:02.032794",
+  "dataset": "clip",
+  "epochs": 2,
+  "batch_size": 4,
+  "experiments": {
+    "baseline": {
+      "status": "failed",
+      "exit_code": 1
+    },
+    "router_only": {
+      "status": "failed",
+      "exit_code": 1
+    },
+    "router_guided": {
+      "status": "failed",
+      "exit_code": 1
+    }
+  }
+}

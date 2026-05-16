@@ -1,0 +1,199 @@
+# LVLM Experiment Configuration
+# Large Language Video Model with Temporal Binding + Adaptive Depth
+
+project_name: "LVLM-TemporalBinding"
+experiment_id: "${project_name}_${now:%Y%m%d_%H%M%S}"
+seed: 42
+
+# ============================================================================
+# TRAINING CONFIG
+# ============================================================================
+training:
+  num_epochs: 20
+  batch_size: 32
+  gradient_accumulation_steps: 2
+  num_workers: 4
+  pin_memory: true
+  mixed_precision: "fp16"  # Enables FP16 training
+  
+  optimizer:
+    type: "adamw"
+    lr: 1e-4
+    weight_decay: 1e-5
+    warmup_steps: 1000
+    warmup_ratio: 0.1
+    max_grad_norm: 1.0
+    
+  scheduler:
+    type: "cosine"
+    num_cycles: 0.5
+    
+  early_stopping:
+    patience: 5
+    monitor: "val_accuracy"
+    mode: "max"
+    min_delta: 0.001
+
+# ============================================================================
+# LOSS WEIGHTS
+# ============================================================================
+loss:
+  answer_loss_weight: 1.0          # Cross-entropy on answer
+  temporal_grounding_weight: 0.5   # Smooth L1 on timestamps
+  contrastive_weight: 0.2          # Question-memory alignment
+  sparsity_weight: 0.1             # Encourage few memory nodes
+  adaptive_depth_weight: 0.2       # Early stopping regularization
+
+# ============================================================================
+# MODEL ARCHITECTURE CONFIG
+# ============================================================================
+model:
+  temporal_binding:
+    enabled: true
+    consolidation_method: "markov"
+    gate_type: "learned"
+    sparsity_target: 0.3  # Target compression ratio
+    
+  reasoning:
+    type: "chimrt"  # Conditional Hierarchical Integrated Multi-Relational Transformer
+    num_layers: 3
+    hidden_dim: 768
+    num_heads: 12
+    ffn_dim: 3072
+    dropout: 0.1
+    attention_dropout: 0.1
+    
+  adaptive_depth:
+    enabled: true
+    max_hops: 5
+    entropy_threshold: 0.5
+    stop_gate_type: "learned"  # w^T R_k sigmoid stopping gate
+    use_entropy_check: true     # Continue if entropy > threshold
+    use_learned_gate: true      # Continue if stop_prob < threshold
+    
+  temporal_grounding:
+    enabled: true
+    output_stride: 4
+    regression_loss: "smooth_l1"
+    
+  multimodal_embedding:
+    shared_dim: 768
+    projection_layers: 2
+    dropout: 0.1
+
+# ============================================================================
+# DATA CONFIG
+# ============================================================================
+data:
+  datasets:
+    - name: "clip_vit_b32"
+      enabled: true
+      split: ["train", "val", "test"]
+      annotation_file: "${data_dir}/clip_vit_b32_annotations.json"
+      feature_cache_dir: "${data_dir}/clip_vit_b32_features"
+      
+  preprocessing:
+    embedding_dim: 768  # CLIP ViT-B-32 output dimension
+    preprocess_features: true
+    
+  feature_cache:
+    enabled: true
+    format: "numpy"
+    path: "${data_dir}/clip_vit_b32_features"
+    
+  feature_extractor:
+    type: "clip_vit_b32"  # OpenAI CLIP ViT-B-32 pretrained
+    checkpoint: "openai/clip-vit-base-patch32"
+    frozen: true
+    output_dim: 768
+
+# ============================================================================
+# EVALUATION CONFIG
+# ============================================================================
+evaluation:
+  metrics:
+    - accuracy
+    - clip_alignment_score
+    - text_image_similarity
+    - embedding_quality
+    
+  benchmarks:
+    clip_vit_b32:
+      enabled: true
+      metric: "accuracy"
+      test_splits: ["val", "test"]
+      
+  ablation_studies:
+    - name: "no_temporal_binding"
+      config_override:
+        temporal_binding.enabled: false
+        
+    - name: "no_adaptive_depth"
+      config_override:
+        adaptive_depth.enabled: false
+        
+    - name: "fixed_k=2"
+      config_override:
+        adaptive_depth.enabled: false
+        adaptive_depth.max_hops: 2
+        
+    - name: "entropy_only"
+      config_override:
+        adaptive_depth.use_learned_gate: false
+        
+    - name: "gate_only"
+      config_override:
+        adaptive_depth.use_entropy_check: false
+
+# ============================================================================
+# LOGGING & CHECKPOINTING
+# ============================================================================
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  save_dir: "${experiment_dir}/logs"
+  
+checkpointing:
+  save_dir: "${experiment_dir}/checkpoints"
+  save_frequency: 500  # steps
+  keep_best_k: 3
+  save_last: true
+  
+visualization:
+  enabled: true
+  log_attention_heatmaps: true
+  log_reasoning_traces: true
+  log_memory_assignments: true
+  log_frequency: 100  # steps
+
+# ============================================================================
+# HARDWARE CONFIG
+# ============================================================================
+hardware:
+  device: "cuda"  # cpu or cuda
+  cuda_visible_devices: "0"
+  deterministic: true
+  benchmark_cudnn: false  # Set true for faster performance if not deterministic
+
+# ============================================================================
+# PATHS
+# ============================================================================
+paths:
+  root_dir: "."
+  data_dir: "${root_dir}/data/datasets"
+  cache_dir: "${root_dir}/data/cache"
+  experiment_dir: "${root_dir}/experiments/${experiment_id}"
+  model_dir: "${experiment_dir}/models"
+  log_dir: "${experiment_dir}/logs"
+
+# ============================================================================
+# WANDB (Weights & Biases) INTEGRATION
+# ============================================================================
+wandb:
+  enabled: false
+  project: "lvlm-temporal-binding"
+  entity: null  # Set to your W&B username if using
+  tags:
+    - "temporal_binding"
+    - "adaptive_depth"
+    - "video_qa"

@@ -1,0 +1,33 @@
+research:
+  adaptive_router:
+    enabled: true
+    min_tokens: 8
+    max_tokens: 32
+    temperature: 1.0
+    query_conditioned: true
+  temporal_fusion:
+    enabled: false
+    num_heads: 8
+    depth: 2
+    output_tokens: 32
+    max_frames: 16
+  instruction_guided_aggregation:
+    enabled: true
+    output_tokens: 32
+    num_heads: 8
+  memory_projection:
+    enabled: false
+    memory_slots: 8
+    num_heads: 8
+  dynamic_token_generator:
+    enabled: false
+    min_tokens: 8
+    max_tokens: 32
+  grounding:
+    enabled: true
+    lambda_grounding: 0.05
+    projection_dim: 512
+    temperature: 0.07
+  unsupported_claim_penalty:
+    enabled: false
+    lambda_penalty: 0.05
