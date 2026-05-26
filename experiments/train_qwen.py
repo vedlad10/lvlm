@@ -42,7 +42,7 @@ from utils.config import load_config
 from utils.metrics import Metrics, MetricsTracker
 from models import LVLM
 from models.qwen_adapter import QwenAdapter, QwenLVLMFusion
-from experiments.data_utils import create_data_loaders
+from data_utils import create_data_loaders
 
 logger = logging.getLogger(__name__)
 
