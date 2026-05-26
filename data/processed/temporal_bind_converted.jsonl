@@ -1,0 +1,4 @@
+{"video_id": "vid_001", "question": "Did the person finish 'opening a door' before or after 'walking through'?", "expected_answer": "before", "category": "Event ordering", "difficulty": "Medium"}
+{"video_id": "vid_001", "question": "Which action took longer to complete: 'opening a door' or 'walking through'?", "expected_answer": "opening a door", "category": "Duration estimation", "difficulty": "Hard"}
+{"video_id": "vid_002", "question": "Did the person finish 'pouring water' before or after 'drinking'?", "expected_answer": "before", "category": "Event ordering", "difficulty": "Medium"}
+{"video_id": "vid_002", "question": "Which action took longer to complete: 'pouring water' or 'drinking'?", "expected_answer": "pouring water", "category": "Duration estimation", "difficulty": "Hard"}

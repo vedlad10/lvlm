@@ -1,0 +1,181 @@
+# Qwen 2.5 Fine-tuning Configuration for LVLM
+# Large Language Video Model with Temporal Binding Integration
+
+project_name: "LVLM-Qwen2.5"
+experiment_id: "${project_name}_${now:%Y%m%d_%H%M%S}"
+seed: 42
+
+# ============================================================================
+# QWEN MODEL CONFIGURATION
+# ============================================================================
+qwen:
+  model_name: "Qwen/Qwen2.5-7B-Instruct"
+  # model_name: "Qwen/Qwen2.5-14B-Instruct"  # Alternative: 14B for better performance
+  
+  # LoRA Configuration (Parameter-Efficient Fine-tuning)
+  lora_rank: 16                # Rank of LoRA matrices (8/16/32)
+  lora_alpha: 32               # LoRA scaling factor
+  lora_dropout: 0.05           # Dropout in LoRA layers
+  
+  # Quantization
+  use_4bit: true               # 4-bit quantization for memory efficiency
+  bnb_4bit_quant_type: "nf4"   # NormalFloat4 quantization
+  
+  # Sequence length
+  max_seq_length: 4096
+  
+  # Inference
+  temperature: 0.7
+  top_p: 0.9
+
+# ============================================================================
+# TRAINING CONFIGURATION
+# ============================================================================
+training:
+  # Stage selection
+  stage: 1                     # 1: Freeze LVLM | 2: Joint fine-tuning
+  
+  # Epochs and batch
+  num_epochs: 15
+  batch_size: 16               # Reduce if OOM: 8, 12
+  gradient_accumulation_steps: 2
+  num_workers: 4
+  pin_memory: true
+  mixed_precision: "fp16"
+  
+  # Optimizer
+  optimizer:
+    type: "adamw"
+    lr: 2e-4                   # Lower than LVLM training
+    weight_decay: 1e-5
+    betas: [0.9, 0.999]
+  
+  # Learning rate schedule
+  scheduler:
+    type: "cosine"
+    warmup_steps: 500          # Smaller warmup for fine-tuning
+    warmup_ratio: 0.05
+  
+  # Gradient management
+  max_grad_norm: 1.0
+  gradient_checkpointing: true # Save memory during backprop
+  
+  # Early stopping
+  early_stopping:
+    patience: 5
+    monitor: "val_loss"
+    mode: "min"
+    min_delta: 0.001
+
+# ============================================================================
+# LOSS WEIGHTS (Multi-task Learning)
+# ============================================================================
+loss_weights:
+  qa: 1.0                      # Question answering loss (cross-entropy)
+  grounding: 0.5               # Temporal grounding loss (smooth L1)
+  contrastive: 0.1             # Contrastive learning with memory
+  regularization: 0.05         # L2 regularization
+
+# ============================================================================
+# LVLM INTEGRATION
+# ============================================================================
+lvlm:
+  # Feature extraction
+  feature_dim: 768             # From ViT-B/32
+  
+  # Temporal binding
+  temporal_binding:
+    enabled: true
+    num_memory_nodes: 8        # Compression ratio
+    gate_type: "learned"
+    consolidation_method: "markov"
+  
+  # Adaptive depth
+  adaptive_depth:
+    enabled: true
+    max_hops: 5
+    entropy_threshold: 0.5
+  
+  # Freeze LVLM components during Stage 1
+  freeze_encoder: true
+  freeze_temporal_binding: true
+  freeze_chimrt: true
+
+# ============================================================================
+# DATA CONFIGURATION
+# ============================================================================
+data:
+  datasets:
+    - "tvqa"                   # Primary dataset
+    # - "activitynet"          # Additional dataset
+  
+  # Train/val split
+  train_split: 0.8
+  val_split: 0.2
+  
+  # Preprocessing
+  preprocessing:
+    max_frames: 64             # Max frames per video
+    feature_cache: true        # Use pre-computed features
+    normalize_features: true
+
+# ============================================================================
+# LOGGING AND CHECKPOINTING
+# ============================================================================
+logging:
+  use_wandb: true
+  wandb_project: "lvlm-qwen"
+  experiment_name: "qwen2.5-stage1-tvqa"
+  log_interval: 10
+  
+  # Checkpointing
+  save_strategy: "best"        # Options: "best", "epoch", "steps"
+  save_total_limit: 3
+  
+  # Tensorboard
+  use_tensorboard: true
+  tensorboard_dir: "./runs"
+
+# ============================================================================
+# EVALUATION
+# ============================================================================
+evaluation:
+  eval_strategy: "epoch"
+  eval_steps: null
+  compute_metrics: true
+  
+  metrics:
+    - "accuracy"
+    - "f1"
+    - "bleu"
+    - "meteor"
+    - "temporal_iou"
+
+# ============================================================================
+# INFERENCE (Post-training)
+# ============================================================================
+inference:
+  max_new_tokens: 128
+  num_beams: 4
+  early_stopping: true
+  repetition_penalty: 1.2
+
+# ============================================================================
+# ABLATION STUDIES
+# ============================================================================
+ablation:
+  ablate_temporal_binding: false
+  ablate_adaptive_depth: false
+  ablate_lora: false
+  
+  # Number of hops for adaptive depth ablation
+  fixed_depth: null            # null=adaptive, or set to 2-5
+
+# ============================================================================
+# HARDWARE CONFIGURATION
+# ============================================================================
+hardware:
+  device: "cuda"               # "cuda" or "cpu"
+  dtype: "float16"             # "float32" or "float16"
+  compile_model: false         # PyTorch 2.0 compilation
+  max_memory: null             # Max GPU memory in GB

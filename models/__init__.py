@@ -7,6 +7,7 @@ from .chimrt import CHIMRT, ReasoningGraph
 from .adaptive_depth import AdaptiveDepthController
 from .multimodal_vdb import MultimodalVDB
 from .lvlm import LVLM
+from .qwen_adapter import QwenAdapter, QwenLVLMFusion
 
 # Research Modules (optional enhancements for visual token processing)
 from .research_modules import (
@@ -29,6 +30,8 @@ __all__ = [
     "AdaptiveDepthController",
     "MultimodalVDB",
     "LVLM",
+    "QwenAdapter",
+    "QwenLVLMFusion",
     # Research Modules
     "AdaptiveVisualTokenRouter",
     "InstructionGuidedVisualAggregator",

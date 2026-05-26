@@ -8,6 +8,9 @@ transformers==4.35.2
 timm==0.9.8  # PyTorch Image Models for ViT
 clip @ git+https://github.com/openai/CLIP.git
 
+# Qwen 2.5 specific
+bitsandbytes==0.41.0  # 4-bit quantization for Qwen
+
 # Data handling
 numpy==1.24.3
 pandas==2.0.3

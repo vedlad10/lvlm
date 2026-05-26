@@ -1,0 +1,155 @@
+# Ablation Study: Fixed Reasoning Depth
+# Tests: How many reasoning hops are actually needed?
+# Compares: Adaptive depth (2-5 hops) vs Fixed depths (1,2,3,4,5)
+
+project_name: "LVLM-Qwen-Ablation-FixedDepth"
+experiment_id: "${project_name}_${now:%Y%m%d_%H%M%S}"
+seed: 42
+
+# ============================================================================
+# QWEN MODEL CONFIGURATION
+# ============================================================================
+qwen:
+  model_name: "Qwen/Qwen2.5-7B-Instruct"
+  lora_rank: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  use_4bit: true
+  max_seq_length: 4096
+
+# ============================================================================
+# TRAINING CONFIGURATION
+# ============================================================================
+training:
+  stage: 1
+  num_epochs: 15
+  batch_size: 16
+  gradient_accumulation_steps: 2
+  num_workers: 4
+  
+  optimizer:
+    type: "adamw"
+    lr: 2e-4
+    weight_decay: 1e-5
+  
+  scheduler:
+    type: "cosine"
+    warmup_steps: 500
+  
+  max_grad_norm: 1.0
+  early_stopping:
+    patience: 5
+    monitor: "val_loss"
+
+# ============================================================================
+# LOSS WEIGHTS
+# ============================================================================
+loss_weights:
+  qa: 1.0
+  grounding: 0.5
+  contrastive: 0.1
+  regularization: 0.05
+
+# ============================================================================
+# LVLM INTEGRATION - FIXED DEPTH ABLATION
+# ============================================================================
+lvlm:
+  feature_dim: 768
+  
+  temporal_binding:
+    enabled: true
+    num_memory_nodes: 8
+    gate_type: "learned"
+  
+  adaptive_depth:
+    enabled: false                 # No adaptation
+    max_hops: 5
+    entropy_threshold: 0.5
+  
+  freeze_encoder: true
+  freeze_temporal_binding: true
+  freeze_chimrt: true
+
+# ============================================================================
+# DATA CONFIGURATION
+# ============================================================================
+data:
+  datasets:
+    - "tvqa"
+  
+  train_split: 0.8
+  val_split: 0.2
+  
+  preprocessing:
+    max_frames: 64
+    feature_cache: true
+    normalize_features: true
+
+# ============================================================================
+# LOGGING
+# ============================================================================
+logging:
+  use_wandb: true
+  wandb_project: "lvlm-qwen-ablation"
+  experiment_name: "ablation-fixed-depth"
+  log_interval: 10
+  save_strategy: "best"
+  save_total_limit: 3
+
+# ============================================================================
+# EVALUATION
+# ============================================================================
+evaluation:
+  eval_strategy: "epoch"
+  compute_metrics: true
+  metrics:
+    - "accuracy"
+    - "f1"
+    - "bleu"
+
+# ============================================================================
+# INFERENCE
+# ============================================================================
+inference:
+  max_new_tokens: 128
+  num_beams: 4
+
+# ============================================================================
+# ABLATION SETTINGS
+# ============================================================================
+ablation:
+  ablate_temporal_binding: false
+  ablate_adaptive_depth: false
+  ablate_lora: false
+  
+  # IMPORTANT: Set to 1, 2, 3, 4, or 5 for different fixed depths
+  # Run multiple experiments with different values to compare:
+  # - fixed_depth: 1  (minimal reasoning)
+  # - fixed_depth: 2  (low reasoning)
+  # - fixed_depth: 3  (medium reasoning)
+  # - fixed_depth: 4  (high reasoning)
+  # - fixed_depth: 5  (maximum reasoning)
+  fixed_depth: 3  # Change this for each experiment
+
+# ============================================================================
+# HARDWARE
+# ============================================================================
+hardware:
+  device: "cuda"
+  dtype: "float16"
+  compile_model: false
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# This config is meant for running multiple experiments.
+# 
+# Run sequence:
+# python experiments/train_qwen.py --config configs/ablation_fixed_depth.yaml
+# (then manually edit fixed_depth: 1, 2, 3, 4, 5 and rerun)
+#
+# Or create a script wrapper:
+# for depth in 1 2 3 4 5; do
+#   sed -i "s/fixed_depth: .*/fixed_depth: $depth/" configs/ablation_fixed_depth.yaml
+#   python experiments/train_qwen.py --config configs/ablation_fixed_depth.yaml
+# done
